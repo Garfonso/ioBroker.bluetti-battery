@@ -281,7 +281,10 @@ const BUILDERS: Record<string, Builder> = {
 /** Supported device type prefixes, longest first so EP500P matches before EP500. */
 export const SUPPORTED_TYPES = ['AC200M', 'AC300', 'AC500', 'AC60', 'EP500P', 'EP500', 'EP600', 'EB3A'];
 
-const DEVICE_NAME_RE = /^(AC200M|AC300|AC500|AC60|EP500P|EP500|EP600|EB3A)(\d+)$/;
+// Tolerate leading/trailing non-word characters that some firmware adds around
+// the advertised name (e.g. "\x00AC300123\x00"). Longest prefixes first so
+// EP500P matches before EP500.
+const DEVICE_NAME_RE = /^[^\w]*(AC200M|AC300|AC500|AC60|EP500P|EP500|EP600|EB3A)(\d+)[^\w]*$/;
 
 export interface DetectedDevice {
     type: string;
