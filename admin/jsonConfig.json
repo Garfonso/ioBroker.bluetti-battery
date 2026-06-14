@@ -2,9 +2,10 @@
 	"i18n": true,
 	"type": "panel",
 	"items": {
-		"option1": {
-			"type": "checkbox",
-			"label": "option1",
+		"macAddress": {
+			"type": "text",
+			"label": "MAC address",
+			"help": "Bluetooth MAC address of the device, e.g. AA:BB:CC:DD:EE:FF",
 			"newLine": true,
 			"xs": 12,
 			"sm": 12,
@@ -12,9 +13,47 @@
 			"lg": 4,
 			"xl": 4
 		},
-		"option2": {
-			"type": "text",
-			"label": "option2",
+		"deviceType": {
+			"type": "select",
+			"label": "Device type",
+			"help": "Leave on auto to detect from the advertised Bluetooth name",
+			"newLine": true,
+			"options": [
+				{ "label": "Auto detect", "value": "auto" },
+				{ "label": "AC200M", "value": "AC200M" },
+				{ "label": "AC300", "value": "AC300" },
+				{ "label": "AC500", "value": "AC500" },
+				{ "label": "AC60", "value": "AC60" },
+				{ "label": "EP500", "value": "EP500" },
+				{ "label": "EP500P", "value": "EP500P" },
+				{ "label": "EP600", "value": "EP600" },
+				{ "label": "EB3A", "value": "EB3A" }
+			],
+			"default": "auto",
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 4,
+			"xl": 4
+		},
+		"pollInterval": {
+			"type": "number",
+			"label": "Polling interval (s)",
+			"min": 2,
+			"max": 3600,
+			"default": 10,
+			"newLine": true,
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 3,
+			"xl": 3
+		},
+		"pollPacks": {
+			"type": "checkbox",
+			"label": "Poll per-pack battery data",
+			"help": "Reads cell voltages and per-pack details (slower)",
+			"default": false,
 			"newLine": true,
 			"xs": 12,
 			"sm": 12,

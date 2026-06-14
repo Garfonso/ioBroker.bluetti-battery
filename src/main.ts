@@ -1,167 +1,328 @@
 /*
- * Created with @iobroker/create-adapter v3.1.5
+ * ioBroker Bluetti battery adapter.
+ * MODBUS-over-Bluetooth port of warhammerkid/bluetti_mqtt.
  */
-
-// The adapter-core module gives you access to the core ioBroker functions
-// you need to create an adapter
 import * as utils from '@iobroker/adapter-core';
+import { ReadHoldingRegisters, WriteSingleRegister } from './lib/commands';
+import {
+	BoolField,
+	type DeviceField,
+	EnumField,
+	SerialNumberField,
+	StringField,
+	SwapStringField,
+	VersionField,
+	type FieldValue,
+} from './lib/fields';
+import { BluetoothClient } from './lib/bluetoothClient';
+import { buildDevice, detectFromName, SUPPORTED_TYPES, type DeviceDefinition } from './lib/devices';
 
-// Load your modules here, e.g.:
-// import * as fs from 'fs';
+const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i;
+const PACK_SELECT_REGISTER = 3006;
 
 class BluettiBattery extends utils.Adapter {
+	private client?: BluetoothClient;
+	private device?: DeviceDefinition;
+	private pollTimer?: ReturnType<typeof setTimeout>;
+	private reconnectTimer?: ReturnType<typeof setTimeout>;
+	private polling = false;
+	private stopping = false;
+
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
-		super({
-			...options,
-			name: 'bluetti-battery',
-		});
+		super({ ...options, name: 'bluetti-battery' });
 		this.on('ready', this.onReady.bind(this));
 		this.on('stateChange', this.onStateChange.bind(this));
-		// this.on('objectChange', this.onObjectChange.bind(this));
-		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
 	}
 
-	/**
-	 * Is called when databases are connected and adapter received configuration.
-	 */
 	private async onReady(): Promise<void> {
-		// Initialize your adapter here
+		await this.setState('info.connection', { val: false, ack: true });
 
-		// The adapters config (in the instance object everything under the attribute "native") is accessible via
-		// this.config:
-		this.log.debug('config option1: ${this.config.option1}');
-		this.log.debug('config option2: ${this.config.option2}');
+		const mac = (this.config.macAddress || '').trim();
+		if (!MAC_RE.test(mac)) {
+			this.log.error(`Invalid or missing MAC address: "${mac}". Configure it in the adapter settings.`);
+			return;
+		}
+		if (!(this.config.pollInterval > 0)) {
+			this.config.pollInterval = 10;
+		}
 
-		/*
-		For every state in the system there has to be also an object of type state
-		Here a simple template for a boolean variable named "testVariable"
-		Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-
-		IMPORTANT: State roles should be chosen carefully based on the state's purpose.
-		           Please refer to the state roles documentation for guidance:
-		           https://www.iobroker.net/#en/documentation/dev/stateroles.md
-		*/
-		await this.setObjectNotExistsAsync('testVariable', {
-			type: 'state',
-			common: {
-				name: 'testVariable',
-				type: 'boolean',
-				role: 'indicator',
-				read: true,
-				write: true,
-			},
-			native: {},
-		});
-
-		// In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-		this.subscribeStates('testVariable');
-		// You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-		// this.subscribeStates('lights.*');
-		// Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-		// this.subscribeStates('*');
-
-		/*
-			setState examples
-			you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-		*/
-		// the variable testVariable is set to true as command (ack=false)
-		await this.setState('testVariable', true);
-
-		// same thing, but the value is flagged "ack"
-		// ack should be always set to true if the value is received from or acknowledged from the target system
-		await this.setState('testVariable', { val: true, ack: true });
-
-		// same thing, but the state is deleted after 30s (getState will return null afterwards)
-		await this.setState('testVariable', { val: true, ack: true, expire: 30 });
-
-		// examples for the checkPassword/checkGroup functions
-		const pwdResult = await this.checkPasswordAsync('admin', 'iobroker');
-		this.log.info(`check user admin pw iobroker: ${JSON.stringify(pwdResult)}`);
-
-		const groupResult = await this.checkGroupAsync('admin', 'admin');
-		this.log.info(`check group user admin group admin: ${JSON.stringify(groupResult)}`);
+		this.subscribeStates('*');
+		await this.connectLoop(mac);
 	}
 
-	/**
-	 * Is called when adapter shuts down - callback has to be called under any circumstances!
-	 *
-	 * @param callback - Callback function
-	 */
-	private onUnload(callback: () => void): void {
+	/** Connect with retry, then build objects and start polling. */
+	private async connectLoop(mac: string): Promise<void> {
+		if (this.stopping) {
+			return;
+		}
+		this.client = new BluetoothClient(mac, this.log, () => this.handleDisconnect(mac));
 		try {
-			// Here you must clear all timeouts or intervals that may still be active
-			// clearTimeout(timeout1);
-			// clearTimeout(timeout2);
-			// ...
-			// clearInterval(interval1);
-
-			callback();
-		} catch (error) {
-			this.log.error(`Error during unloading: ${(error as Error).message}`);
-			callback();
+			await this.client.connect();
+		} catch (err) {
+			this.log.warn(`Connection failed: ${(err as Error).message}. Retrying in 15s.`);
+			await this.client.disconnect().catch(() => undefined);
+			this.scheduleReconnect(mac, 15000);
+			return;
 		}
+
+		const device = this.resolveDevice(this.client.name);
+		if (!device) {
+			this.log.error(
+				`Could not determine device type. Advertised name: "${this.client.name ?? '?'}". ` +
+					`Set the device type manually in settings. Supported: ${SUPPORTED_TYPES.join(', ')}.`,
+			);
+			await this.client.disconnect().catch(() => undefined);
+			return;
+		}
+		this.device = device;
+		this.log.info(`Using device profile: ${device.type}`);
+
+		await this.createObjects(device);
+		await this.setState('info.connection', { val: true, ack: true });
+		await this.poll();
 	}
 
-	// If you need to react to object changes, uncomment the following block and the corresponding line in the constructor.
-	// You also need to subscribe to the objects with `this.subscribeObjects`, similar to `this.subscribeStates`.
-	// /**
-	//  * Is called if a subscribed object changes
-	//  */
-	// private onObjectChange(id: string, obj: ioBroker.Object | null | undefined): void {
-	// 	if (obj) {
-	// 		// The object was changed
-	// 		this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-	// 	} else {
-	// 		// The object was deleted
-	// 		this.log.info(`object ${id} deleted`);
-	// 	}
-	// }
-
-	/**
-	 * Is called if a subscribed state changes
-	 *
-	 * @param id - State ID
-	 * @param state - State object
-	 */
-	private onStateChange(id: string, state: ioBroker.State | null | undefined): void {
-		if (state) {
-			// The state was changed
-			this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-
-			if (state.ack === false) {
-				// This is a command from the user (e.g., from the UI or other adapter)
-				// and should be processed by the adapter
-				this.log.info(`User command received for ${id}: ${state.val}`);
-
-				// TODO: Add your control logic here
+	private resolveDevice(name?: string): DeviceDefinition | undefined {
+		const configured = (this.config.deviceType || 'auto').trim();
+		if (configured && configured !== 'auto') {
+			return buildDevice(configured);
+		}
+		if (name) {
+			const detected = detectFromName(name);
+			if (detected) {
+				return buildDevice(detected.type);
 			}
-		} else {
-			// The object was deleted or the state value has expired
-			this.log.info(`state ${id} deleted`);
+		}
+		return undefined;
+	}
+
+	private handleDisconnect(mac: string): void {
+		if (this.stopping) {
+			return;
+		}
+		void this.setState('info.connection', { val: false, ack: true });
+		this.clearTimers();
+		this.scheduleReconnect(mac, 5000);
+	}
+
+	private scheduleReconnect(mac: string, delay: number): void {
+		if (this.stopping) {
+			return;
+		}
+		this.clearTimers();
+		this.reconnectTimer = setTimeout(() => {
+			void this.connectLoop(mac);
+		}, delay);
+	}
+
+	private clearTimers(): void {
+		if (this.pollTimer) {
+			clearTimeout(this.pollTimer);
+			this.pollTimer = undefined;
+		}
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = undefined;
 		}
 	}
-	// If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
-	// /**
-	//  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...
-	//  * Using this method requires "common.messagebox" property to be set to true in io-package.json
-	//  */
-	//
-	// private onMessage(obj: ioBroker.Message): void {
-	// 	if (typeof obj === 'object' && obj.message) {
-	// 		if (obj.command === 'send') {
-	// 			// e.g. send email or pushover or whatever
-	// 			this.log.info('send command');
-	// 			// Send response in callback if required
-	// 			if (obj.callback) this.sendTo(obj.from, obj.command, 'Message received', obj.callback);
-	// 		}
-	// 	}
-	// }
+
+	// --- Polling --------------------------------------------------------------
+
+	private async poll(): Promise<void> {
+		if (this.polling || this.stopping || !this.client?.connected || !this.device) {
+			return;
+		}
+		this.polling = true;
+		try {
+			for (const cmd of this.device.pollingCommands) {
+				const body = await this.client.perform(cmd);
+				const parsed = this.device.struct.parse(cmd.startingAddress, body);
+				await this.writeValues('', parsed);
+			}
+
+			if (this.config.pollPacks && this.device.packPollingCommands.length) {
+				await this.pollPacks();
+			}
+
+			await this.setState('info.connection', { val: true, ack: true });
+		} catch (err) {
+			this.log.warn(`Polling failed: ${(err as Error).message}`);
+			await this.setState('info.connection', { val: false, ack: true });
+		} finally {
+			this.polling = false;
+		}
+
+		if (!this.stopping) {
+			this.pollTimer = setTimeout(() => void this.poll(), this.config.pollInterval * 1000);
+		}
+	}
+
+	private async pollPacks(): Promise<void> {
+		if (!this.client || !this.device) {
+			return;
+		}
+		for (let pack = 1; pack <= this.device.packNumMax; pack++) {
+			await this.client.perform(new WriteSingleRegister(PACK_SELECT_REGISTER, pack));
+			for (const cmd of this.device.packPollingCommands) {
+				const body = await this.client.perform(cmd);
+				const parsed = this.device.struct.parse(cmd.startingAddress, body);
+				await this.writeValues(`packs.${pack}.`, parsed);
+			}
+		}
+	}
+
+	private async writeValues(prefix: string, values: Record<string, FieldValue>): Promise<void> {
+		for (const [name, value] of Object.entries(values)) {
+			const val = Array.isArray(value) ? JSON.stringify(value) : value;
+			await this.setState(`${prefix}${name}`, { val, ack: true });
+		}
+	}
+
+	// --- Object creation ------------------------------------------------------
+
+	private async createObjects(device: DeviceDefinition): Promise<void> {
+		const rootNames = this.coveredNames(device, device.pollingCommands);
+		for (const field of rootNames.values()) {
+			await this.createStateObject('', field, device);
+		}
+
+		if (device.packPollingCommands.length) {
+			const packNames = this.coveredNames(device, device.packPollingCommands);
+			for (let pack = 1; pack <= device.packNumMax; pack++) {
+				await this.setObjectNotExistsAsync(`packs.${pack}`, {
+					type: 'channel',
+					common: { name: `Battery pack ${pack}` },
+					native: {},
+				});
+				for (const field of packNames.values()) {
+					await this.createStateObject(`packs.${pack}.`, field, device);
+				}
+			}
+		}
+	}
+
+	/** Unique field-name -> representative field, for fields covered by the commands. */
+	private coveredNames(device: DeviceDefinition, cmds: ReadHoldingRegisters[]): Map<string, DeviceField> {
+		const map = new Map<string, DeviceField>();
+		for (const field of device.struct.fields) {
+			const covered = cmds.some(
+				(c) =>
+					field.address >= c.startingAddress &&
+					field.address + field.size - 1 <= c.startingAddress + c.quantity - 1,
+			);
+			if (covered && !map.has(field.name)) {
+				map.set(field.name, field);
+			}
+		}
+		return map;
+	}
+
+	private async createStateObject(prefix: string, field: DeviceField, device: DeviceDefinition): Promise<void> {
+		const writable = !prefix && !!device.struct.writableField(field.name);
+		const meta = stateMeta(field, writable);
+		const common: ioBroker.StateCommon = {
+			name: field.name.replace(/_/g, ' '),
+			type: meta.type,
+			role: meta.role,
+			read: true,
+			write: writable,
+		};
+		if (meta.unit) {
+			common.unit = meta.unit;
+		}
+		if (field.enumMap) {
+			common.states = { ...field.enumMap };
+		}
+		await this.extendObject(`${prefix}${field.name}`, { type: 'state', common, native: {} });
+	}
+
+	// --- Controls -------------------------------------------------------------
+
+	private async onStateChange(id: string, state: ioBroker.State | null | undefined): Promise<void> {
+		if (!state || state.ack || !this.device || !this.client?.connected) {
+			return;
+		}
+		const name = id.substring(id.lastIndexOf('.') + 1);
+		const field = this.device.struct.writableField(name);
+		if (!field) {
+			return;
+		}
+
+		try {
+			const register = field.toRegister(state.val);
+			await this.client.perform(new WriteSingleRegister(field.address, register));
+			this.log.info(`Set ${name} = ${String(state.val)} (register ${field.address} = ${register})`);
+			await this.setState(id, { val: state.val, ack: true });
+		} catch (err) {
+			this.log.warn(`Failed to set ${name}: ${(err as Error).message}`);
+		}
+	}
+
+	private onUnload(callback: () => void): void {
+		this.stopping = true;
+		this.clearTimers();
+		const done = (): void => {
+			try {
+				callback();
+			} catch {
+				/* ignore */
+			}
+		};
+		if (this.client) {
+			this.client.disconnect().then(done, done);
+		} else {
+			done();
+		}
+	}
 }
+
+interface StateMeta {
+	type: ioBroker.CommonType;
+	role: string;
+	unit?: string;
+}
+
+function stateMeta(field: DeviceField, writable: boolean): StateMeta {
+	const name = field.name;
+	if (name === 'cell_voltages') {
+		return { type: 'string', role: 'json' };
+	}
+	if (field instanceof BoolField) {
+		return { type: 'boolean', role: writable ? 'switch' : 'indicator' };
+	}
+	if (field instanceof EnumField) {
+		return { type: 'number', role: writable ? 'level.mode' : 'value' };
+	}
+	if (field instanceof StringField || field instanceof SwapStringField || field instanceof SerialNumberField) {
+		return { type: 'string', role: 'text' };
+	}
+	if (field instanceof VersionField) {
+		return { type: 'number', role: 'value' };
+	}
+	if (name === 'power_generation') {
+		return { type: 'number', role: 'value.power.consumed', unit: 'kWh' };
+	}
+	if (name.endsWith('percent') || name.startsWith('battery_range')) {
+		return { type: 'number', role: name.includes('battery') ? 'value.battery' : 'value', unit: '%' };
+	}
+	if (name.endsWith('power')) {
+		return { type: 'number', role: 'value.power', unit: 'W' };
+	}
+	if (name.includes('voltage')) {
+		return { type: 'number', role: 'value.voltage', unit: 'V' };
+	}
+	if (name.includes('current')) {
+		return { type: 'number', role: 'value.current', unit: 'A' };
+	}
+	if (name.includes('frequency')) {
+		return { type: 'number', role: 'value', unit: 'Hz' };
+	}
+	return { type: 'number', role: 'value' };
+}
+
 if (require.main !== module) {
-	// Export the constructor in compact mode
 	module.exports = (options: Partial<utils.AdapterOptions> | undefined) => new BluettiBattery(options);
 } else {
-	// otherwise start the instance directly
 	(() => new BluettiBattery())();
 }

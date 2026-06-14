@@ -12,7 +12,39 @@
 
 ## bluetti-battery adapter for ioBroker
 
-bluetti
+Monitor and control Bluetti power stations / batteries over Bluetooth Low Energy
+(MODBUS-over-BLE). This is a Node.js/TypeScript port of the protocol from
+[bluetti_mqtt](https://github.com/warhammerkid/bluetti_mqtt), integrated directly
+into ioBroker so no extra Python service or MQTT broker is required.
+
+### Supported devices
+
+`AC200M`, `AC300`, `AC500`, `AC60`, `EP500`, `EP500P`, `EP600`, `EB3A`.
+
+One adapter instance talks to one device.
+
+### Requirements
+
+- Linux host with **BlueZ** (the standard Linux Bluetooth stack). The adapter
+  uses [`node-ble`](https://github.com/chrvadala/node-ble), which talks to BlueZ
+  over D-Bus — it does **not** grab the HCI adapter exclusively, so it coexists
+  with other BLE adapters and the system Bluetooth stack.
+- The user running ioBroker needs D-Bus permission to use BlueZ. If you get
+  permission errors, add a D-Bus policy for the `iobroker` user (see the
+  [node-ble setup notes](https://github.com/chrvadala/node-ble#provide-permissions)).
+
+### Configuration
+
+| Setting | Description |
+|---------|-------------|
+| MAC address | Bluetooth MAC of the device, e.g. `AA:BB:CC:DD:EE:FF`. |
+| Device type | `auto` detects from the advertised BLE name, or pick the model manually. |
+| Polling interval | Seconds between reads (default 10). |
+| Poll per-pack data | Also read per-pack cell voltages etc. (slower). |
+
+States that map to writable MODBUS registers (e.g. `ac_output_on`,
+`dc_output_on`, `ups_mode`) are created with write access; setting them sends a
+`WriteSingleRegister` command to the device.
 
 ## Developer manual
 This section is intended for the developer. It can be deleted later.

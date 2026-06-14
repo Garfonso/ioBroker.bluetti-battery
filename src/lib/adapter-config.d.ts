@@ -4,8 +4,14 @@
 declare global {
 	namespace ioBroker {
 		interface AdapterConfig {
-			option1: boolean;
-			option2: string;
+			/** Bluetooth MAC address of the device, e.g. "AA:BB:CC:DD:EE:FF". */
+			macAddress: string;
+			/** Device type, or "auto" to detect from the advertised BLE name. */
+			deviceType: string;
+			/** Polling interval in seconds. */
+			pollInterval: number;
+			/** Whether to poll per-pack battery data (cell voltages etc.). */
+			pollPacks: boolean;
 		}
 	}
 }
