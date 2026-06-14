@@ -59,6 +59,32 @@ States that map to writable MODBUS registers (e.g. `ac_output_on`,
 `dc_output_on`, `ups_mode`) are created with write access; setting them sends a
 `WriteSingleRegister` command to the device.
 
+### Finding undocumented registers / controls
+
+Some app settings (e.g. the AC charge-current limit) are newer than the
+register maps. The adapter exposes raw MODBUS access via `sendTo` so you can
+discover them the same way the original `bluetti-discovery` tool does: dump a
+register range, change the setting in the Bluetti app, dump again, and diff.
+
+From the JavaScript adapter / a script (replace `0` with your instance):
+
+```js
+// Read specific registers
+sendTo('bluetti-battery.0', 'readRegisters', { address: 3019, quantity: 1 }, console.log);
+
+// Scan a range (readable registers only)
+sendTo('bluetti-battery.0', 'scanRange', { start: 3000, end: 3120 }, console.log);
+
+// Write a register to test a control (use with care)
+sendTo('bluetti-battery.0', 'writeRegister', { address: 3019, value: 10 }, console.log);
+```
+
+Workflow to find a setting: `scanRange` the likely control area (around
+`2200–2260` and `3000–3120` on AC/EP devices), note the values, change the
+setting in the app, `scanRange` again, and look for the register whose value
+matches the new setting. Then `writeRegister` to confirm it controls the
+setting before it gets a named state.
+
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):

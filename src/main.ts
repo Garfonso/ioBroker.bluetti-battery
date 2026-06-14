@@ -3,8 +3,7 @@
  * MODBUS-over-Bluetooth port of warhammerkid/bluetti_mqtt.
  */
 import * as utils from '@iobroker/adapter-core';
-import type { ReadHoldingRegisters } from './lib/commands';
-import { WriteSingleRegister } from './lib/commands';
+import { ReadHoldingRegisters, WriteSingleRegister } from './lib/commands';
 import { BoolField, EnumField, SerialNumberField, StringField, SwapStringField, VersionField } from './lib/fields';
 import type { DeviceField, FieldValue } from './lib/fields';
 import { BluetoothClient, ModbusError } from './lib/bluetoothClient';
@@ -36,6 +35,7 @@ class BluettiBattery extends utils.Adapter {
         super({ ...options, name: 'bluetti-battery' });
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
+        this.on('message', this.onMessage.bind(this));
         this.on('unload', this.onUnload.bind(this));
     }
 
@@ -354,6 +354,109 @@ class BluettiBattery extends utils.Adapter {
         } catch (err) {
             this.log.warn(`Failed to set ${name}: ${(err as Error).message}`);
         }
+    }
+
+    // --- Register tooling (for reverse-engineering controls) -------------------
+
+    /**
+     * Message handler used to read/scan/write raw MODBUS registers. Useful for
+     * finding undocumented settings: dump a range, change the setting in the
+     * Bluetti app, dump again and diff to see which register changed.
+     *
+     * Commands (obj.command):
+     *  - readRegisters { address, quantity }  -> { values: number[] }
+     *  - scanRange     { start, end }         -> { registers: { addr: value } }
+     *  - writeRegister { address, value }     -> { ok: true }
+     *
+     * @param obj
+     */
+    private async onMessage(obj: ioBroker.Message): Promise<void> {
+        const respond = (payload: Record<string, unknown>): void => {
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, payload, obj.callback);
+            }
+        };
+        if (!this.client?.connected) {
+            respond({ error: 'not connected to a device' });
+            return;
+        }
+        const msg = (obj.message ?? {}) as Record<string, unknown>;
+        const num = (v: unknown, def = 0): number => (typeof v === 'number' ? v : Number(v) || def);
+
+        try {
+            switch (obj.command) {
+                case 'readRegisters': {
+                    const address = num(msg.address);
+                    const quantity = num(msg.quantity, 1);
+                    const values = await this.readRegisters(address, quantity);
+                    respond({ address, quantity, values });
+                    break;
+                }
+                case 'scanRange': {
+                    const start = num(msg.start);
+                    const end = num(msg.end, start);
+                    const registers = await this.scanRange(start, end);
+                    respond({ start, end, registers });
+                    break;
+                }
+                case 'writeRegister': {
+                    const address = num(msg.address);
+                    const value = num(msg.value);
+                    try {
+                        await this.client.perform(new WriteSingleRegister(address, value));
+                    } catch (err) {
+                        // Exception 5 (acknowledge) means the write was accepted.
+                        if (!(err instanceof ModbusError)) {
+                            throw err;
+                        }
+                    }
+                    respond({ ok: true, address, value });
+                    break;
+                }
+                default:
+                    respond({ error: `unknown command "${obj.command}"` });
+            }
+        } catch (err) {
+            respond({ error: (err as Error).message });
+        }
+    }
+
+    /** Read `quantity` holding registers starting at `address` as uint16 values. */
+    private async readRegisters(address: number, quantity: number): Promise<number[]> {
+        const body = await this.client!.perform(new ReadHoldingRegisters(address, quantity));
+        const values: number[] = [];
+        for (let i = 0; i + 1 < body.length; i += 2) {
+            values.push(body.readUInt16BE(i));
+        }
+        return values;
+    }
+
+    /** Scan [start, end] in small chunks, returning the readable registers. */
+    private async scanRange(start: number, end: number): Promise<Record<number, number>> {
+        const result: Record<number, number> = {};
+        const chunk = 16;
+        for (let addr = start; addr <= end; addr += chunk) {
+            const quantity = Math.min(chunk, end - addr + 1);
+            try {
+                const values = await this.readRegisters(addr, quantity);
+                values.forEach((v, i) => (result[addr + i] = v));
+            } catch (err) {
+                if (!(err instanceof ModbusError)) {
+                    throw err;
+                }
+                // Chunk unreadable as a whole - probe each register individually.
+                for (let a = addr; a < addr + quantity; a++) {
+                    try {
+                        result[a] = (await this.readRegisters(a, 1))[0];
+                    } catch (inner) {
+                        if (!(inner instanceof ModbusError)) {
+                            throw inner;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     private onUnload(callback: () => void): void {
