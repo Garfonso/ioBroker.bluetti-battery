@@ -23,6 +23,8 @@ class BluettiBattery extends utils.Adapter {
     private stopping = false;
     /** Register start addresses already warned about (avoid log spam). */
     private readonly modbusWarned = new Set<number>();
+    /** Pack numbers whose objects have been created. */
+    private readonly createdPacks = new Set<number>();
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({ ...options, name: 'bluetti-battery' });
@@ -203,12 +205,41 @@ class BluettiBattery extends utils.Adapter {
             return;
         }
         for (let pack = 1; pack <= this.device.packNumMax; pack++) {
-            await this.client.perform(new WriteSingleRegister(PACK_SELECT_REGISTER, pack));
-            for (const cmd of this.device.packPollingCommands) {
-                const body = await this.client.perform(cmd);
-                const parsed = this.device.struct.parse(cmd.startingAddress, body);
+            try {
+                // Select the pack, then read its block. Not-connected packs make
+                // the device reject the request - skip them quietly.
+                await this.client.perform(new WriteSingleRegister(PACK_SELECT_REGISTER, pack));
+                const parsed: Record<string, FieldValue> = {};
+                for (const cmd of this.device.packPollingCommands) {
+                    const body = await this.client.perform(cmd);
+                    Object.assign(parsed, this.device.struct.parse(cmd.startingAddress, body));
+                }
+                await this.ensurePackObjects(pack);
                 await this.writeValues(`packs.${pack}.`, parsed);
+            } catch (err) {
+                if (err instanceof ModbusError) {
+                    this.log.debug(`Pack ${pack} not available (MODBUS exception ${err.code})`);
+                    continue;
+                }
+                throw err;
             }
+        }
+    }
+
+    /** Create the channel + states for a pack the first time it responds. */
+    private async ensurePackObjects(pack: number): Promise<void> {
+        if (!this.device || this.createdPacks.has(pack)) {
+            return;
+        }
+        this.createdPacks.add(pack);
+        await this.setObjectNotExistsAsync(`packs.${pack}`, {
+            type: 'channel',
+            common: { name: `Battery pack ${pack}` },
+            native: {},
+        });
+        const packNames = this.coveredNames(this.device, this.device.packPollingCommands);
+        for (const field of packNames.values()) {
+            await this.createStateObject(`packs.${pack}.`, field, this.device);
         }
     }
 
@@ -226,20 +257,8 @@ class BluettiBattery extends utils.Adapter {
         for (const field of rootNames.values()) {
             await this.createStateObject('', field, device);
         }
-
-        if (device.packPollingCommands.length) {
-            const packNames = this.coveredNames(device, device.packPollingCommands);
-            for (let pack = 1; pack <= device.packNumMax; pack++) {
-                await this.setObjectNotExistsAsync(`packs.${pack}`, {
-                    type: 'channel',
-                    common: { name: `Battery pack ${pack}` },
-                    native: {},
-                });
-                for (const field of packNames.values()) {
-                    await this.createStateObject(`packs.${pack}.`, field, device);
-                }
-            }
-        }
+        // Pack channels/states are created on demand as packs respond (see
+        // ensurePackObjects), so disconnected packs do not produce empty objects.
     }
 
     /**
