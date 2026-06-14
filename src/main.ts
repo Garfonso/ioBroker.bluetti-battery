@@ -5,18 +5,11 @@
 import * as utils from '@iobroker/adapter-core';
 import type { ReadHoldingRegisters } from './lib/commands';
 import { WriteSingleRegister } from './lib/commands';
-import {
-    BoolField,
-    type DeviceField,
-    EnumField,
-    SerialNumberField,
-    StringField,
-    SwapStringField,
-    VersionField,
-    type FieldValue,
-} from './lib/fields';
+import { BoolField, EnumField, SerialNumberField, StringField, SwapStringField, VersionField } from './lib/fields';
+import type { DeviceField, FieldValue } from './lib/fields';
 import { BluetoothClient } from './lib/bluetoothClient';
-import { buildDevice, detectFromName, SUPPORTED_TYPES, type DeviceDefinition } from './lib/devices';
+import { buildDevice, detectFromName, SUPPORTED_TYPES } from './lib/devices';
+import type { DeviceDefinition } from './lib/devices';
 
 const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i;
 const PACK_SELECT_REGISTER = 3006;

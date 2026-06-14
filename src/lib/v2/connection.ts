@@ -17,11 +17,11 @@ import {
     deriveUnsecureKeyIv,
     generateKeyPair,
     hexsum,
-    type KeyPair,
     KEX_MAGIC,
     signData,
     verifyAndExtractSignedData,
 } from './crypto';
+import type { KeyPair } from './crypto';
 
 export interface Connection {
     /** Feed raw bytes received from the notify characteristic. */

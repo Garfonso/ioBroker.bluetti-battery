@@ -3,7 +3,8 @@
  * Ported from bluetti_mqtt/core/devices/*.py.
  */
 import { ReadHoldingRegisters } from './commands';
-import { DeviceStruct, type EnumMap, type FieldValue } from './fields';
+import { DeviceStruct } from './fields';
+import type { EnumMap, FieldValue } from './fields';
 import { buildV2Device } from './v2/v2device';
 
 // --- Shared enums (value -> name) ---------------------------------------------

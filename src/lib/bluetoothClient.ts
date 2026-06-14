@@ -1,6 +1,8 @@
-import { createBluetooth, type Adapter, type Bluetooth, type Device, type GattCharacteristic } from 'node-ble';
+import { createBluetooth } from 'node-ble';
+import type { Adapter, Bluetooth, Device, GattCharacteristic } from 'node-ble';
 import type { DeviceCommand } from './commands';
-import { type Connection, EncryptedConnection, PassthroughConnection } from './v2/connection';
+import { EncryptedConnection, PassthroughConnection } from './v2/connection';
+import type { Connection } from './v2/connection';
 
 const SERVICE_UUID = '0000ff00-0000-1000-8000-00805f9b34fb';
 const WRITE_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';

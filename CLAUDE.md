@@ -12,6 +12,12 @@
 - Use [Conventional Commits](https://www.conventionalcommits.org/) style subjects
   (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
 
+## Code style
+
+- **Never mix `type` and value specifiers in one import statement.** The ts-node
+  setup ioBroker uses fails to parse e.g. `import { Foo, type Bar } from './x'`.
+  Split them: `import { Foo } from './x';` + `import type { Bar } from './x';`.
+
 ## Environment quirks
 
 - Repo lives on a VirtualBox `vboxsf` shared folder (no symlinks, root-owned):

@@ -6,7 +6,8 @@
  * Covers the newer encrypted models (e.g. AC180 on recent firmware).
  */
 import { ReadHoldingRegisters } from '../commands';
-import { DeviceStruct, type EnumMap, type FieldValue } from '../fields';
+import { DeviceStruct } from '../fields';
+import type { EnumMap, FieldValue } from '../fields';
 import type { DeviceDefinition } from '../devices';
 
 const ChargingMode: EnumMap = { 0: 'STANDARD', 1: 'SILENT', 2: 'TURBO' };
