@@ -47,7 +47,13 @@
 			"Garfonso <garfonso@mobo.info>"
 		],
 		"keywords": [
-			"battery ble energy"
+			"bluetti",
+			"battery",
+			"bluetooth",
+			"ble",
+			"modbus",
+			"energy",
+			"powerstation"
 		],
 		"licenseInformation": {
 			"type": "free",

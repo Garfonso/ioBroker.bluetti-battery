@@ -10,7 +10,14 @@
   "homepage": "https://github.com/Garfonso/ioBroker.bluetti-battery",
   "license": "MIT",
   "keywords": [
-    "battery ble energy"
+    "ioBroker",
+    "bluetti",
+    "battery",
+    "bluetooth",
+    "ble",
+    "modbus",
+    "energy",
+    "powerstation"
   ],
   "repository": {
     "type": "git",
