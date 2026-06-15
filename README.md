@@ -1,4 +1,5 @@
-![Logo](admin/bluetti-battery.png)
+<img src="admin/bluetti-battery.png" alt="Logo" width="120" align="right" />
+
 # ioBroker.bluetti-battery
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.bluetti-battery.svg)](https://www.npmjs.com/package/iobroker.bluetti-battery)
