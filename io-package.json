@@ -31,17 +31,17 @@
 			"zh-cn": "bluetti电池控制"
 		},
 		"desc": {
-			"en": "bluetti",
-			"de": "Bluetti",
-			"ru": "Блютти",
-			"pt": "azul",
-			"nl": "Bluetti",
-			"fr": "bleutti",
-			"it": "bluetti",
-			"es": "blueti",
-			"pl": "błękitny",
-			"uk": "bluetti",
-			"zh-cn": "布鲁蒂"
+			"en": "monitor and control bluetti battery",
+			"de": "Bluetti-Batterie überwachen und steuern",
+			"ru": "мониторинг и управление батареей Bluetti",
+			"pt": "monitorizar e controlar a bateria Bluetti",
+			"nl": "Bluetti-batterij bewaken en bedienen",
+			"fr": "surveiller et contrôler la batterie Bluetti",
+			"it": "monitora e controlla la batteria Bluetti",
+			"es": "monitorizar y controlar la batería Bluetti",
+			"pl": "monitoruj i steruj baterią Bluetti",
+			"uk": "моніторинг і керування батареєю Bluetti",
+			"zh-cn": "监控和控制 Bluetti 电池"
 		},
 		"authors": [
 			"Garfonso <garfonso@mobo.info>"
