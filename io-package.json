@@ -1,121 +1,136 @@
 {
-	"common": {
-		"name": "bluetti-battery",
-		"version": "0.0.1",
-		"news": {
-			"0.0.1": {
-				"en": "initial release",
-				"de": "Erstveröffentlichung",
-				"ru": "Начальная версия",
-				"pt": "lançamento inicial",
-				"nl": "Eerste uitgave",
-				"fr": "Première version",
-				"it": "Versione iniziale",
-				"es": "Versión inicial",
-				"pl": "Pierwsze wydanie",
-				"uk": "Початкова версія",
-				"zh-cn": "首次出版"
-			}
-		},
-		"titleLang": {
-			"en": "bluetti battery control",
-			"de": "Bluetti Batteriesteuerung",
-			"ru": "контроль заряда батареи bluetti",
-			"pt": "controle de bateria bluetti",
-			"nl": "bluetti batterijcontrole",
-			"fr": "contrôle de batterie bluetti",
-			"it": "controllo batteria bluetti",
-			"es": "control de bateria bluetti",
-			"pl": "kontrola baterii bluetti",
-			"uk": "контроль батареї bluetti",
-			"zh-cn": "bluetti电池控制"
-		},
-		"desc": {
-			"en": "monitor and control bluetti battery",
-			"de": "Bluetti-Batterie überwachen und steuern",
-			"ru": "мониторинг и управление батареей Bluetti",
-			"pt": "monitorizar e controlar a bateria Bluetti",
-			"nl": "Bluetti-batterij bewaken en bedienen",
-			"fr": "surveiller et contrôler la batterie Bluetti",
-			"it": "monitora e controlla la batteria Bluetti",
-			"es": "monitorizar y controlar la batería Bluetti",
-			"pl": "monitoruj i steruj baterią Bluetti",
-			"uk": "моніторинг і керування батареєю Bluetti",
-			"zh-cn": "监控和控制 Bluetti 电池"
-		},
-		"authors": [
-			"Garfonso <garfonso@mobo.info>"
-		],
-		"keywords": [
-			"bluetti",
-			"battery",
-			"bluetooth",
-			"ble",
-			"modbus",
-			"energy",
-			"powerstation"
-		],
-		"licenseInformation": {
-			"type": "free",
-			"license": "MIT"
-		},
-		"platform": "Javascript/Node.js",
-		"icon": "bluetti-battery.png",
-		"enabled": true,
-		"extIcon": "https://raw.githubusercontent.com/Garfonso/ioBroker.bluetti-battery/main/admin/bluetti-battery.png",
-		"readme": "https://github.com/Garfonso/ioBroker.bluetti-battery/blob/main/README.md",
-		"loglevel": "info",
-		"tier": 3,
-		"mode": "daemon",
-		"type": "energy",
-		"messagebox": true,
-		"compact": false,
-		"os": ["linux"],
-		"connectionType": "local",
-		"dataSource": "poll",
-		"adminUI": {
-			"config": "json"
-		},
-		"dependencies": [
-			{
-				"js-controller": ">=6.0.11"
-			}
-		],
-		"globalDependencies": [
-			{
-				"admin": ">=7.6.20"
-			}
-		]
-	},
-	"native": {
-		"macAddress": "",
-		"deviceType": "auto",
-		"pollInterval": 10,
-		"pollPacks": false,
-		"encryption": "auto"
-	},
-	"objects": [],
-	"instanceObjects": [
-		{
-			"_id": "info",
-			"type": "channel",
-			"common": {
-				"name": "Information"
-			},
-			"native": {}
-		},
-		{
-			"_id": "info.connection",
-			"type": "state",
-			"common": {
-				"role": "indicator.connected",
-				"name": "Device connected",
-				"type": "boolean",
-				"read": true,
-				"write": false,
-				"def": false
-			},
-			"native": {}
-		}
-	]
+  "common": {
+    "name": "bluetti-battery",
+    "version": "0.1.0",
+    "news": {
+      "0.1.0": {
+        "en": "tolerate issues in BLE connection better.\nadd support for reverse engineering modbus registers via sendTo commands\nmake modbus polling more robust.\nadd experimental support for encrypted (v2) devices\ninitial release",
+        "de": "Probleme mit der BLE-Verbindung besser tolerieren.\nUnterstützung für Reverse Engineering von Modbus-Registern über sendTo-Befehle hinzufügen\nDas Modbus-Polling robuster gestalten.\nExperimentelle Unterstützung für verschlüsselte (v2) Geräte hinzufügen\nErstveröffentlichung",
+        "ru": "Лучше справляются с проблемами в BLE-соединении.\nДобавить поддержку обратного проектирования регистров Modbus с помощью команд sendTo.\nСделать опрос Modbus более надежным.\nдобавить экспериментальную поддержку зашифрованных (v2) устройств\nпервоначальный релиз",
+        "pt": "toleram melhor problemas na conexão BLE.\nAdicionar suporte para engenharia reversa de registradores Modbus por meio de comandos sendTo.\nTornar o polling do Modbus mais robusto.\nAdicionar suporte experimental para dispositivos criptografados (v2)\nlançamento inicial",
+        "nl": "Kan problemen met de BLE-verbinding beter verdragen.\nVoeg ondersteuning toe voor reverse engineering van Modbus-registers via sendTo-commando's.\nModbus-polling robuuster maken.\nVoeg experimentele ondersteuning toe voor versleutelde (v2) apparaten.\neerste release",
+        "fr": "Tolérer mieux les problèmes de connexion BLE.\najout de la prise en charge de la rétro-ingénierie des registres Modbus via les commandes sendTo\nRendre l'interrogation Modbus plus robuste.\najout d'une prise en charge expérimentale des périphériques chiffrés (v2)\nversion initiale",
+        "it": "Tolleranza migliore ai problemi di connessione BLE.\nAggiungere il supporto per il reverse engineering dei registri Modbus tramite comandi sendTo\nrendere più robusto il polling Modbus.\naggiungere il supporto sperimentale per dispositivi crittografati (v2).\nrilascio iniziale",
+        "es": "Toleran mejor los problemas en la conexión BLE.\nAgregar soporte para la ingeniería inversa de registros Modbus mediante comandos sendTo.\nHacer que el sondeo Modbus sea más robusto.\nagregar soporte experimental para dispositivos cifrados (v2)\nlanzamiento inicial",
+        "pl": "lepiej znoszą problemy z połączeniem BLE.\ndodaj obsługę inżynierii wstecznej rejestrów Modbus za pomocą poleceń sendTo\nuczynić sondowanie modbus bardziej niezawodnym.\ndodaj eksperymentalną obsługę urządzeń szyfrowanych (v2)\nwydanie początkowe",
+        "uk": "краще переносять проблеми з BLE-з'єднанням.\nдодати підтримку зворотного проектування регістрів Modbus за допомогою команд sendTo\nзробити опитування Modbus більш надійним.\nдодати експериментальну підтримку для зашифрованих пристроїв (v2)\nпочатковий випуск",
+        "zh-cn": "对蓝牙低功耗连接问题的容忍度更高。\n添加对通过 sendTo 命令进行 Modbus 寄存器逆向工程的支持\n增强 Modbus 轮询的稳定性。\n增加对加密（v2）设备的实验性支持\n初始版本"
+      },
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
+    },
+    "titleLang": {
+      "en": "bluetti battery control",
+      "de": "Bluetti Batteriesteuerung",
+      "ru": "контроль заряда батареи bluetti",
+      "pt": "controle de bateria bluetti",
+      "nl": "bluetti batterijcontrole",
+      "fr": "contrôle de batterie bluetti",
+      "it": "controllo batteria bluetti",
+      "es": "control de bateria bluetti",
+      "pl": "kontrola baterii bluetti",
+      "uk": "контроль батареї bluetti",
+      "zh-cn": "bluetti电池控制"
+    },
+    "desc": {
+      "en": "monitor and control bluetti battery",
+      "de": "Bluetti-Batterie überwachen und steuern",
+      "ru": "мониторинг и управление батареей Bluetti",
+      "pt": "monitorizar e controlar a bateria Bluetti",
+      "nl": "Bluetti-batterij bewaken en bedienen",
+      "fr": "surveiller et contrôler la batterie Bluetti",
+      "it": "monitora e controlla la batteria Bluetti",
+      "es": "monitorizar y controlar la batería Bluetti",
+      "pl": "monitoruj i steruj baterią Bluetti",
+      "uk": "моніторинг і керування батареєю Bluetti",
+      "zh-cn": "监控和控制 Bluetti 电池"
+    },
+    "authors": [
+      "Garfonso <garfonso@mobo.info>"
+    ],
+    "keywords": [
+      "bluetti",
+      "battery",
+      "bluetooth",
+      "ble",
+      "modbus",
+      "energy",
+      "powerstation"
+    ],
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "bluetti-battery.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/Garfonso/ioBroker.bluetti-battery/main/admin/bluetti-battery.png",
+    "readme": "https://github.com/Garfonso/ioBroker.bluetti-battery/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "energy",
+    "messagebox": true,
+    "compact": false,
+    "os": [
+      "linux"
+    ],
+    "connectionType": "local",
+    "dataSource": "poll",
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.6.20"
+      }
+    ]
+  },
+  "native": {
+    "macAddress": "",
+    "deviceType": "auto",
+    "pollInterval": 10,
+    "pollPacks": false,
+    "encryption": "auto"
+  },
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }
