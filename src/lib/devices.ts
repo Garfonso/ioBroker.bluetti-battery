@@ -471,13 +471,16 @@ const TYPE_ALIASES: Record<string, string> = {
     AC200PL: 'AC200L',
     AC180P: 'AC180',
     AC70P: 'AC70',
+    // Apex 300 is a v2 (encrypted) device. The generic V2 profile decodes the
+    // common values; Apex-specific registers still need mapping. EXPERIMENTAL.
+    APEX300: 'V2',
 };
 
 // Tolerate leading/trailing non-word characters that some firmware adds around
 // the advertised name (e.g. "\x00AC300123\x00"). Longest literals first so e.g.
 // EP500P matches before EP500.
 const DEVICE_NAME_RE =
-    /^[^\w]*(AC200PL|AC200M|AC200L|AC300|AC500|AC240|AC2A|AC180P|AC180|AC70P|AC70|AC60|EP500P|EP500|EP600|EB3A)(\d+)[^\w]*$/;
+    /^[^\w]*(AC200PL|AC200M|AC200L|AC300|AC500|AC240|AC2A|AC180P|AC180|AC70P|AC70|AC60|APEX300|EP500P|EP500|EP600|EB3A)(\d+)[^\w]*$/;
 
 export interface DetectedDevice {
     type: string;

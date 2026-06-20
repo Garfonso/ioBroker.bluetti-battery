@@ -32,7 +32,7 @@ One adapter instance talks to one device.
 |--------|---------|
 | ✅ Confirmed on real hardware | `AC300`, `AC500` (incl. pack polling and controls) |
 | ⚙️ Ported, needs a tester | `AC200M`, `AC200L`, `AC240`, `AC60`, `EP500`, `EP500P`, `EP600`, `EB3A` |
-| 🧪 Experimental (fork maps / unverified) | `AC180`, `AC2A`, `AC70`, `V2` (encrypted) |
+| 🧪 Experimental (fork maps / unverified) | `AC180`, `AC2A`, `AC70`, `Apex 300`, `V2` (encrypted) |
 
 If your device is in the "needs a tester" or "experimental" row, please report
 how it behaves — see [Testing & reporting](#testing--reporting).
@@ -57,6 +57,12 @@ Newer Bluetti units use an encrypted BLE handshake (AES-CBC + ECDH). Select the
 port of the [nhurman fork](https://github.com/nhurman/bluetti_mqtt) and is
 **experimental**: the crypto primitives are unit-tested, but the full handshake
 has not been verified against real hardware. Feedback welcome.
+
+The **Apex 300** is a v2 device and auto-detects to the `V2` profile. The
+generic V2 register map decodes the common values (state of charge, power,
+AC/DC switches, battery voltage); Apex-specific registers are not mapped yet.
+If the handshake completes (`Encrypted handshake complete` in the log), use the
+`scanRange` tooling to help map the rest.
 
 ### Requirements
 
