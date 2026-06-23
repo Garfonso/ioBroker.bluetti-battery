@@ -119,6 +119,7 @@ setting before it gets a named state.
 	### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- (ioBroker-Bot) Adapter requires admin >= 7.8.23 now.
 * (Garfonso/Claude) add very experimental support for APEX 300.
 
 ### 0.1.0 (2026-06-19)
